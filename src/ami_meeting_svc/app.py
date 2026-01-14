@@ -4,3 +4,6 @@ from fastapi import FastAPI
 app = FastAPI(debug=True)
 
 # add routers
+from ami_meeting_svc.routers.auth import auth_router
+
+app.include_router(auth_router)
