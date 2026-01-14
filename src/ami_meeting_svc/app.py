@@ -1,5 +1,6 @@
 from fastapi import FastAPI
 
-app = FastAPI(debug=True, root_path=ami_meeting_svc)
+# Initialize FastAPI application
+app = FastAPI(debug=True)
 
 # add routers
