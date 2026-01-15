@@ -14,6 +14,8 @@ class Meeting(Base):
     date: datetime = Column(DateTime, nullable=False)
     attendees: list = Column(SAJSON, nullable=False)
     notes: str = Column(Text, nullable=False)
+    # New analysis_result column to store AI analysis output
+    analysis_result: dict = Column(SAJSON, nullable=True)
     created_at = Column(DateTime, server_default=func.now(), nullable=False)
     updated_at = Column(DateTime, server_default=func.now(), onupdate=func.now(), nullable=False)
 

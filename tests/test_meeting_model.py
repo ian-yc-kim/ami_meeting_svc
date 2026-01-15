@@ -60,3 +60,28 @@ def test_owner_id_not_null(db_session):
     session.add(meeting)
     with pytest.raises(IntegrityError):
         session.commit()
+
+
+def test_meeting_with_analysis_result(db_session):
+    """Verify analysis_result JSON column can be stored and retrieved."""
+    session = db_session
+    user = _create_user(session)
+
+    analysis = {"summary": "test summary", "action_items": [{"task": "do something"}]}
+
+    meeting = Meeting(
+        owner_id=user.id,
+        title="Analysis Meeting",
+        date=datetime.utcnow(),
+        attendees=["alice"],
+        notes="Notes",
+        analysis_result=analysis
+    )
+
+    session.add(meeting)
+    session.commit()
+    session.refresh(meeting)
+
+    assert meeting.analysis_result is not None
+    assert meeting.analysis_result["summary"] == "test summary"
+    assert isinstance(meeting.analysis_result["action_items"], list)
