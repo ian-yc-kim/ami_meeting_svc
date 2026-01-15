@@ -13,9 +13,14 @@ try:
 except ValueError:
     ACCESS_TOKEN_EXPIRE_MINUTES = 30
 
+
 def _parse_bool_env(value: str | None, default: bool) -> bool:
     if value is None:
         return default
     return str(value).lower() in ("1", "true", "yes", "y")
 
 COOKIE_SECURE = _parse_bool_env(os.getenv("COOKIE_SECURE"), True)
+
+# OpenAI configuration
+OPENAI_API_KEY = os.getenv("OPENAI_API_KEY")
+OPENAI_MODEL_NAME = os.getenv("OPENAI_MODEL_NAME", "gpt-3.5-turbo")
