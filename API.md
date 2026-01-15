@@ -166,6 +166,64 @@ Errors:
 - 404 Not Found: Meeting does not exist or is not owned by the current user.
 - 500 Internal Server Error
 
+POST /meetings/{meeting_id}/analyze
+------------------------------------
+Description: Run AI-powered analysis on the meeting notes and persist the result to the meeting record.
+
+Authentication: requires `access_token` HttpOnly cookie. The endpoint is protected and only the meeting owner can invoke analysis for that meeting.
+
+Path parameters:
+- meeting_id: integer (id of the meeting)
+
+Request body: empty (no JSON payload required). The analysis runs against the meeting.notes stored in the database.
+
+Behavior:
+- Validates meeting exists and is owned by the current authenticated user.
+- Validates that meeting.notes is non-empty; returns 400 if notes are empty.
+- Calls the OpenAI-backed analysis service and expects a JSON object in return.
+- Persists the returned JSON into the meeting.analysis_result column and returns the updated MeetingResponse.
+
+Response structure (MeetingResponse):
+- id: integer
+- owner_id: integer
+- title: string
+- date: datetime
+- attendees: array of strings
+- notes: string
+- created_at: datetime
+- updated_at: datetime
+- analysis_result: object | null
+
+analysis_result object keys (typical):
+- summary: short textual summary of the meeting
+- key_discussion_points: array of important discussion bullet points
+  - Note: some integrations or prompts may use the synonym key_points. The service stores whatever keys the AI returns; commonly key_discussion_points is used.
+- decisions: array of decisions or action items decided during the meeting
+
+Example success response (200):
+{
+  "id": 42,
+  "owner_id": 1,
+  "title": "Team Sync",
+  "date": "2026-01-15T12:34:56.000Z",
+  "attendees": ["alice", "bob"],
+  "notes": "This meeting covered project updates, blockers, and next steps. Detailed notes go here...",
+  "created_at": "2026-01-15T12:35:00.000Z",
+  "updated_at": "2026-01-15T12:40:00.000Z",
+  "analysis_result": {
+    "summary": "Brief summary of the meeting.",
+    "key_discussion_points": ["Status updates", "Blockers and next steps"],
+    "decisions": ["Adopt new release schedule"]
+  }
+}
+
+Errors:
+- 401 Unauthorized: Missing or invalid token.
+- 404 Not Found: Meeting not found or not owned by the current user.
+- 400 Bad Request: Meeting notes are empty and cannot be analyzed.
+- 500 Internal Server Error: AI service error or database error while persisting analysis.
+
 Notes and tips
-- Ensure the `notes` field meets the validation requirement (at least 50 characters) when creating or updating meetings.
+- Ensure the `notes` field meets the validation requirement (at least 50 characters) when creating or updating meetings if you want AI analysis to proceed.
+- The OpenAI model used and API key are controlled by environment variables (see README and config.py).
 - The OpenAPI docs at `/docs` include the request/response models and can be used for interactive testing when the app is running.
