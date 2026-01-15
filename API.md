@@ -76,6 +76,47 @@ Notes
 - Token expiration is controlled by `ACCESS_TOKEN_EXPIRE_MINUTES`.
 - The OpenAPI docs are available at `/docs` and the raw schema at `/openapi.json` when the app is running.
 
+Dashboard
+---------
+The Dashboard endpoints provide aggregated statistics about action items across the system. All Dashboard endpoints require authentication via the `access_token` HttpOnly cookie.
+
+GET /dashboard/metrics
+----------------------
+Description: Provide aggregated statistics for action items including global metrics (total, completion rate, overdue) and a breakdown by assignee.
+
+Authentication: Requires `access_token` HttpOnly cookie.
+
+Success Response (200):
+Returns a DashboardMetrics object containing the following fields:
+- total_items: integer - total number of action items in the system.
+- completion_rate: float - percentage of items with status Done (rounded to one decimal place).
+- overdue_count: integer - total number of items currently marked as overdue.
+- assignee_stats: array of objects - per-assignee counts with the following properties:
+  - assignee: string | null - the assignee identifier (email or username) or null for unassigned items.
+  - todo_count: integer - number of items with status "To Do" for this assignee.
+  - in_progress_count: integer - number of items with status "In Progress" for this assignee.
+  - done_count: integer - number of items with status "Done" for this assignee.
+
+Response Example (200):
+{
+  "total_items": 10,
+  "completion_rate": 30.0,
+  "overdue_count": 2,
+  "assignee_stats": [
+    {
+      "assignee": "user@example.com",
+      "todo_count": 2,
+      "in_progress_count": 1,
+      "done_count": 1
+    }
+  ]
+}
+
+Errors:
+- 401 Unauthorized: Missing or invalid `access_token` cookie.
+- 500 Internal Server Error: Server or database error while computing metrics.
+
+
 Meeting Management
 ------------------
 The Meeting Management endpoints allow authenticated users to create and manage meeting records. All endpoints below require authentication via the `access_token` HttpOnly cookie.
