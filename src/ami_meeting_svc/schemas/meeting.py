@@ -37,5 +37,6 @@ class MeetingResponse(MeetingBase):
     owner_id: int
     created_at: datetime
     updated_at: datetime
+    analysis_result: dict | None = None
 
     model_config = ConfigDict(from_attributes=True)

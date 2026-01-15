@@ -1,5 +1,6 @@
 import pytest
 from datetime import datetime, timedelta
+from unittest.mock import patch, MagicMock
 
 from ami_meeting_svc.models import User
 from ami_meeting_svc.utils.security import get_password_hash
@@ -104,3 +105,73 @@ def test_get_meeting_detail_success_when_owned(client, db_session):
     assert data["owner_id"] is not None
     assert data.get("created_at") is not None
     assert data.get("updated_at") is not None
+
+
+# New tests for analyze endpoint
+
+def test_analyze_meeting_success(client, db_session):
+    # create user and meeting
+    user = create_user(db_session, username="alice", email="alice@example.com", password="secret")
+    login_and_set_cookie(client, "alice", "secret")
+
+    resp = client.post("/meetings/", json=meeting_payload())
+    assert resp.status_code == 201
+    meeting_id = resp.json()["id"]
+
+    # Mock OpenAIService used in routers.meetings
+    mocked_result = {
+        "summary": "A quick summary",
+        "key_discussion_points": ["point1", "point2"],
+        "decisions": ["decision1"]
+    }
+
+    with patch("ami_meeting_svc.routers.meetings.OpenAIService") as MockAI:
+        instance = MockAI.return_value
+        instance.get_completion.return_value = mocked_result
+
+        resp2 = client.post(f"/meetings/{meeting_id}/analyze")
+        assert resp2.status_code == 200
+        data = resp2.json()
+        assert data.get("analysis_result") == mocked_result
+
+        # Ensure persisted
+        resp3 = client.get(f"/meetings/{meeting_id}")
+        assert resp3.status_code == 200
+        assert resp3.json().get("analysis_result") == mocked_result
+
+
+def test_analyze_meeting_permissions(client, db_session):
+    # owner A creates
+    create_user(db_session, username="alice", email="alice@example.com", password="secret")
+    login_and_set_cookie(client, "alice", "secret")
+    resp = client.post("/meetings/", json=meeting_payload())
+    assert resp.status_code == 201
+    meeting_id = resp.json()["id"]
+
+    # other user B
+    create_user(db_session, username="bob", email="bob@example.com", password="secret2")
+    login_and_set_cookie(client, "bob", "secret2")
+
+    resp2 = client.post(f"/meetings/{meeting_id}/analyze")
+    assert resp2.status_code == 404
+
+
+def test_analyze_empty_notes(client, db_session):
+    # create user and insert meeting with empty notes directly
+    user = create_user(db_session, username="alice", email="alice@example.com", password="secret")
+    # insert meeting with empty notes bypassing validation
+    from ami_meeting_svc.models import Meeting
+
+    meeting = Meeting(owner_id=user.id, title="Empty Notes", date=datetime.utcnow(), attendees=["a"], notes="")
+    db_session.add(meeting)
+    db_session.commit()
+    db_session.refresh(meeting)
+
+    login_and_set_cookie(client, "alice", "secret")
+
+    # patch OpenAIService to ensure it is not called
+    with patch("ami_meeting_svc.routers.meetings.OpenAIService") as MockAI:
+        resp = client.post(f"/meetings/{meeting.id}/analyze")
+        assert resp.status_code == 400
+        # Ensure OpenAIService was not instantiated/called
+        MockAI.assert_not_called()
