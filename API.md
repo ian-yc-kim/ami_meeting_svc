@@ -288,6 +288,83 @@ Notes
 - The OpenAI model used and API key are controlled by environment variables (see README and config.py).
 - The OpenAPI docs at `/docs` include the request/response models and can be used for interactive testing when the app is running.
 
+Action Items Management
+-----------------------
+This section documents Action Item related APIs for creating and updating action items that stem from meetings.
+All endpoints require authentication via the `access_token` HttpOnly cookie.
+
+PATCH /action-items/{id}
+-------------------------
+Description: Partially update an existing ActionItem resource. Only provided fields will be updated.
+
+Authentication: requires `access_token` cookie (JWT).
+
+Path parameters:
+- id (action_item_id): integer (id of the action item to update)
+
+Request Body: ActionItemUpdate (all fields optional)
+- description: string | optional
+- assignee: string | null | optional
+- priority: string | optional (allowed values: High, Medium, Low). Values are normalized to Title Case.
+- deadline: datetime (ISO 8601) | null | optional
+- status: string | optional (allowed values: To Do, In Progress, Done)
+
+Validation:
+- priority, if provided, must be one of High, Medium, Low (case-insensitive normalization applied).
+- status, if provided, must be exactly one of: To Do, In Progress, Done.
+
+Behavior:
+- Only fields present in the request body are applied to the stored ActionItem.
+- The server recalculates the `is_overdue` boolean after applying updates using the following logic:
+  is_overdue = (deadline has passed) AND (status != "Done")
+  If `deadline` is null, `is_overdue` will be set to false.
+
+Response model: ActionItemResponse
+Fields returned:
+- id: integer
+- meeting_id: integer
+- description: string
+- assignee: string | null
+- priority: string
+- deadline: datetime | null
+- status: string
+- is_overdue: boolean
+- created_at: datetime
+- updated_at: datetime
+
+Example Request (PATCH):
+PATCH /action-items/123
+Content-Type: application/json
+{
+  "assignee": "carol",
+  "deadline": "2026-01-22T12:00:00Z",
+  "status": "In Progress"
+}
+
+Example Success Response (200):
+{
+  "id": 123,
+  "meeting_id": 42,
+  "description": "Follow up with infra team about deployment windows",
+  "assignee": "carol",
+  "priority": "High",
+  "deadline": "2026-01-22T12:00:00+00:00",
+  "status": "In Progress",
+  "is_overdue": false,
+  "created_at": "2026-01-15T13:00:00.000Z",
+  "updated_at": "2026-01-16T09:00:00.000Z"
+}
+
+Errors:
+- 401 Unauthorized: Missing or invalid token.
+- 404 Not Found: Action item with the provided id does not exist.
+- 422 Unprocessable Entity: Invalid `status` or `priority` value or malformed datetime.
+- 500 Internal Server Error: Database error while saving updates.
+
+Notes and examples:
+- Allowed status values: To Do, In Progress, Done
+- The `is_overdue` calculation is deterministic and performed by the server according to the rule above.
+
 Notes and tips
 - Ensure the `notes` field meets the validation requirement (at least 50 characters) when creating or updating meetings if you want AI analysis or extraction to proceed.
 - The OpenAI model used and API key are controlled by environment variables (see README and config.py).

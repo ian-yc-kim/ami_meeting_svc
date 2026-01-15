@@ -36,3 +36,20 @@ def test_api_md_contains_meeting_endpoints_and_validation_rule():
     assert "notes" in txt, "API.md should reference notes validation"
     # Ensure the extract-actions endpoint is documented
     assert "/meetings/{meeting_id}/extract-actions" in txt, "API.md should document extract-actions endpoint"
+
+
+def test_api_md_contains_action_items_section_and_patch():
+    p = pathlib.Path("API.md")
+    assert p.exists(), "API.md must exist"
+    txt = p.read_text(encoding="utf8")
+    # Section header
+    assert "Action Items Management" in txt, "API.md should contain Action Items Management section"
+    # Endpoint presence
+    assert "/action-items/" in txt, "API.md should document /action-items/ endpoints"
+    assert "PATCH /action-items/{id}" in txt, "API.md should document PATCH /action-items/{id}"
+    # Allowed status values
+    assert "To Do" in txt, "API.md should mention allowed status value To Do"
+    assert "In Progress" in txt, "API.md should mention allowed status value In Progress"
+    assert "Done" in txt, "API.md should mention allowed status value Done"
+    # is_overdue logic statement
+    assert "is_overdue = (deadline has passed) AND (status != \"Done\")" in txt, "API.md should state is_overdue calculation logic"
