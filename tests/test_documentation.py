@@ -34,3 +34,5 @@ def test_api_md_contains_meeting_endpoints_and_validation_rule():
     assert "/meetings/{meeting_id}" in txt, "API.md should document meeting detail path"
     assert "at least 50" in txt, "API.md should document notes validation (at least 50)"
     assert "notes" in txt, "API.md should reference notes validation"
+    # Ensure the extract-actions endpoint is documented
+    assert "/meetings/{meeting_id}/extract-actions" in txt, "API.md should document extract-actions endpoint"

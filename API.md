@@ -223,7 +223,72 @@ Errors:
 - 400 Bad Request: Meeting notes are empty and cannot be analyzed.
 - 500 Internal Server Error: AI service error or database error while persisting analysis.
 
+POST /meetings/{meeting_id}/extract-actions
+-------------------------------------------
+Description: Extract action items from a meeting's notes using the AI service and persist them as ActionItem records.
+
+Authentication: requires `access_token` HttpOnly cookie. Only the meeting owner may invoke this endpoint.
+
+Path parameters:
+- meeting_id: integer (id of the meeting)
+
+Request body: empty (no JSON payload required). The endpoint reads meeting.notes and optionally meeting.analysis_result.
+
+Behavior / Workflow:
+- Validates meeting exists and is owned by the current authenticated user (404 if not).
+- Validates meeting.notes is non-empty (400 if empty).
+- Builds an AI prompt containing the current date, meeting.notes, and existing analysis_result when available.
+- Calls the OpenAI service in JSON mode and expects an object with key "action_items" mapping to a list of action item objects.
+- For each action item returned by AI, the service expects fields:
+  - description (string, required)
+  - assignee (string or null)
+  - priority (string; one of High, Medium, Low)
+  - deadline (ISO8601 string, unix timestamp number, or null)
+- Deadline handling: if the AI returns null, an empty string, or an unparseable value, the server defaults the deadline to 7 days from now.
+- The service constructs ActionItem rows and persists them in the database, returning the created items.
+
+Success Response (200):
+An array of ActionItemResponse objects. Each object contains the following fields:
+- id: integer
+- meeting_id: integer
+- description: string
+- assignee: string | null
+- priority: string (High/Medium/Low)
+- deadline: datetime | null
+- status: string
+- is_overdue: boolean
+- created_at: datetime
+- updated_at: datetime
+
+Example success response (200):
+[
+  {
+    "id": 101,
+    "meeting_id": 42,
+    "description": "Follow up with infra team about deployment windows",
+    "assignee": "alice",
+    "priority": "High",
+    "deadline": "2026-01-22T12:00:00+00:00",
+    "status": "To Do",
+    "is_overdue": false,
+    "created_at": "2026-01-15T13:00:00.000Z",
+    "updated_at": "2026-01-15T13:00:00.000Z"
+  }
+]
+
+Errors:
+- 401 Unauthorized: Missing or invalid token.
+- 404 Not Found: Meeting not found or not owned by the current user.
+- 400 Bad Request: Meeting notes are empty.
+- 500 Internal Server Error: AI service error, invalid AI response format, or database error.
+
+Notes
+-----
+- The AI is expected to return strictly-formatted JSON (a single JSON object). The endpoint validates the structure and fields; invalid structures produce 500 errors.
+- The OpenAI model used and API key are controlled by environment variables (see README and config.py).
+- The OpenAPI docs at `/docs` include the request/response models and can be used for interactive testing when the app is running.
+
 Notes and tips
-- Ensure the `notes` field meets the validation requirement (at least 50 characters) when creating or updating meetings if you want AI analysis to proceed.
+- Ensure the `notes` field meets the validation requirement (at least 50 characters) when creating or updating meetings if you want AI analysis or extraction to proceed.
 - The OpenAI model used and API key are controlled by environment variables (see README and config.py).
 - The OpenAPI docs at `/docs` include the request/response models and can be used for interactive testing when the app is running.
