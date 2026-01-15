@@ -1,8 +1,22 @@
 import pytest
 from datetime import datetime
 from sqlalchemy.exc import IntegrityError
+from sqlalchemy import event
+from sqlalchemy.engine import Engine
 
 from ami_meeting_svc.models import User, Meeting, ActionItem
+
+
+# Enable SQLite foreign key enforcement for all test engine connections
+@event.listens_for(Engine, "connect")
+def _set_sqlite_pragma(dbapi_connection, connection_record):
+    try:
+        cursor = dbapi_connection.cursor()
+        cursor.execute("PRAGMA foreign_keys=ON")
+        cursor.close()
+    except Exception:
+        # If DBAPI doesn't support PRAGMA, ignore and let DB enforce if possible
+        pass
 
 
 def create_user(db_session):
@@ -51,19 +65,7 @@ def test_action_item_crud_and_defaults(db_session):
 
 
 def test_action_item_foreign_key_constraint(db_session):
-    # Ensure SQLite enforces foreign keys for this connection by using raw DB-API connection
-    try:
-        bind = db_session.get_bind()
-        raw_conn = bind.raw_connection()
-        try:
-            raw_conn.execute("PRAGMA foreign_keys=ON")
-            raw_conn.commit()
-        finally:
-            raw_conn.close()
-    except Exception:
-        # If DB driver doesn't support raw_connection or PRAGMA, proceed; integrity will still be attempted
-        pass
-
+    # With Engine-level pragma listener, SQLite will enforce FK constraints on this connection
     ai = ActionItem(meeting_id=999999, description="Orphan action", priority="Low")
     db_session.add(ai)
     with pytest.raises(IntegrityError):
