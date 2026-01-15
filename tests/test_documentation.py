@@ -16,3 +16,11 @@ def test_readme_contains_setup_commands():
     # Ensure README provides at least one of the common setup/run/test commands
     assert any(cmd in txt for cmd in ["make build", "make run", "make setup", "make unittest"]), \
         "README.md should include setup or run instructions (make targets)"
+
+
+def test_readme_contains_openai_env_vars():
+    p = pathlib.Path("README.md")
+    assert p.exists(), "README.md must exist"
+    txt = p.read_text(encoding="utf8")
+    assert "OPENAI_API_KEY" in txt, "README.md should document OPENAI_API_KEY"
+    assert "OPENAI_MODEL_NAME" in txt, "README.md should document OPENAI_MODEL_NAME"

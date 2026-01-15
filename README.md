@@ -44,6 +44,8 @@ Environment
   - ALGORITHM
   - ACCESS_TOKEN_EXPIRE_MINUTES
   - COOKIE_SECURE (true/false)
+  - OPENAI_API_KEY (required for OpenAI integration; credential)
+  - OPENAI_MODEL_NAME (optional; default gpt-3.5-turbo)
 
 API docs
 - Interactive API docs: /docs
